@@ -61,15 +61,11 @@ public class UserService {
   }
 
   private void recordFailedSignin(AppUser appUser) {
-    int attempts = appUser.getFailedLoginAttempts() + 1;
-    if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
-      appUser.setFailedLoginAttempts(0);
-      appUser.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION));
-      log.warn("User locked out after {} failed sign-in attempts: {}", attempts, appUser.getUsername());
-    } else {
-      appUser.setFailedLoginAttempts(attempts);
+    userRepository.incrementFailedLoginAttempts(appUser.getUsername());
+    if (userRepository.lockIfAttemptsReached(appUser.getUsername(), MAX_FAILED_LOGIN_ATTEMPTS,
+        Instant.now().plus(LOCKOUT_DURATION)) > 0) {
+      log.warn("User locked out after {} failed sign-in attempts: {}", MAX_FAILED_LOGIN_ATTEMPTS, appUser.getUsername());
     }
-    userRepository.save(appUser);
   }
 
   public AuthResponseDTO signup(AppUser appUser) {
