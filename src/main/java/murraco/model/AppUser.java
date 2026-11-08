@@ -3,6 +3,7 @@ package murraco.model;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -35,5 +36,9 @@ public class AppUser {
 
   @ElementCollection(fetch = FetchType.EAGER)
   List<AppUserRole> appUserRoles;
+
+  private int failedLoginAttempts;
+
+  private Instant lockedUntil;
 
 }

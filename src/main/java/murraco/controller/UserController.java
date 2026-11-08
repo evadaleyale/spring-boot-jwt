@@ -43,7 +43,8 @@ public class UserController {
   @Operation(summary = "Authenticates user and returns an access/refresh token pair")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "400", description = "Something went wrong"),
-      @ApiResponse(responseCode = "422", description = "Invalid username/password supplied")})
+      @ApiResponse(responseCode = "422", description = "Invalid username/password supplied"),
+      @ApiResponse(responseCode = "423", description = "Account is temporarily locked")})
   public AuthResponseDTO login(
       @Parameter(description = "Username") @RequestParam String username,
       @Parameter(description = "Password") @RequestParam String password) {

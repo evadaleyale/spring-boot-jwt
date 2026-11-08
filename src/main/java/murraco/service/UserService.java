@@ -1,5 +1,8 @@
 package murraco.service;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,9 @@ public class UserService {
 
   private static final String TOKEN_TYPE = "Bearer";
 
+  private static final int MAX_FAILED_LOGIN_ATTEMPTS = 5;
+  private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
+
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
@@ -33,13 +39,37 @@ public class UserService {
   private final RefreshTokenService refreshTokenService;
 
   public AuthResponseDTO signin(String username, String password) {
+    AppUser appUser = userRepository.findByUsername(username);
+    if (appUser != null && appUser.getLockedUntil() != null && appUser.getLockedUntil().isAfter(Instant.now())) {
+      throw new CustomException("Account is temporarily locked due to too many failed sign-in attempts", HttpStatus.LOCKED);
+    }
     try {
       authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-      log.info("User signed in: {}", username);
-      return issueTokens(userRepository.findByUsername(username));
     } catch (AuthenticationException e) {
+      if (appUser != null) {
+        recordFailedSignin(appUser);
+      }
       throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);
     }
+    if (appUser.getFailedLoginAttempts() > 0 || appUser.getLockedUntil() != null) {
+      appUser.setFailedLoginAttempts(0);
+      appUser.setLockedUntil(null);
+      userRepository.save(appUser);
+    }
+    log.info("User signed in: {}", username);
+    return issueTokens(appUser);
+  }
+
+  private void recordFailedSignin(AppUser appUser) {
+    int attempts = appUser.getFailedLoginAttempts() + 1;
+    if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      appUser.setFailedLoginAttempts(0);
+      appUser.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION));
+      log.warn("User locked out after {} failed sign-in attempts: {}", attempts, appUser.getUsername());
+    } else {
+      appUser.setFailedLoginAttempts(attempts);
+    }
+    userRepository.save(appUser);
   }
 
   public AuthResponseDTO signup(AppUser appUser) {
