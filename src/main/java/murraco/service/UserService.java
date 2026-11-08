@@ -39,33 +39,28 @@ public class UserService {
   private final RefreshTokenService refreshTokenService;
 
   public AuthResponseDTO signin(String username, String password) {
-    AppUser appUser = userRepository.findByUsername(username);
-    if (appUser != null && appUser.getLockedUntil() != null && appUser.getLockedUntil().isAfter(Instant.now())) {
+    // Claim an attempt before checking the password, so a burst of parallel requests can't
+    // all get past the lock check while the slow bcrypt comparison runs.
+    if (userRepository.claimSigninAttempt(username, MAX_FAILED_LOGIN_ATTEMPTS, Instant.now()) == 0
+        && userRepository.existsByUsername(username)) {
       throw new CustomException("Account is temporarily locked due to too many failed sign-in attempts", HttpStatus.LOCKED);
     }
+    boolean authenticated = false;
     try {
       authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+      authenticated = true;
     } catch (AuthenticationException e) {
-      if (appUser != null) {
-        recordFailedSignin(appUser);
-      }
       throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);
-    }
-    if (appUser.getFailedLoginAttempts() > 0 || appUser.getLockedUntil() != null) {
-      appUser.setFailedLoginAttempts(0);
-      appUser.setLockedUntil(null);
-      userRepository.save(appUser);
+    } finally {
+      if (authenticated) {
+        userRepository.resetFailedLoginAttempts(username);
+      } else if (userRepository.lockIfAttemptsReached(username, MAX_FAILED_LOGIN_ATTEMPTS,
+          Instant.now().plus(LOCKOUT_DURATION)) > 0) {
+        log.warn("User locked out after {} failed sign-in attempts: {}", MAX_FAILED_LOGIN_ATTEMPTS, username);
+      }
     }
     log.info("User signed in: {}", username);
-    return issueTokens(appUser);
-  }
-
-  private void recordFailedSignin(AppUser appUser) {
-    userRepository.incrementFailedLoginAttempts(appUser.getUsername());
-    if (userRepository.lockIfAttemptsReached(appUser.getUsername(), MAX_FAILED_LOGIN_ATTEMPTS,
-        Instant.now().plus(LOCKOUT_DURATION)) > 0) {
-      log.warn("User locked out after {} failed sign-in attempts: {}", MAX_FAILED_LOGIN_ATTEMPTS, appUser.getUsername());
-    }
+    return issueTokens(userRepository.findByUsername(username));
   }
 
   public AuthResponseDTO signup(AppUser appUser) {

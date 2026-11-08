@@ -14,7 +14,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import murraco.model.AppUser;
 import murraco.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -362,5 +369,38 @@ class UserControllerTest {
 
     signin(locked, LOCKOUT_PASSWORD).andExpect(status().isLocked());
     signin(other, LOCKOUT_PASSWORD).andExpect(status().isOk());
+  }
+
+  @Test
+  void signin_parallelWrongPasswords_getOnlyFivePasswordChecks() throws Exception {
+    String username = createLockoutUser();
+    int requests = 20;
+    ExecutorService pool = Executors.newFixedThreadPool(requests);
+    CountDownLatch start = new CountDownLatch(1);
+    List<Future<Integer>> statuses = new ArrayList<>();
+    for (int i = 0; i < requests; i++) {
+      statuses.add(pool.submit(() -> {
+        start.await();
+        return signin(username, WRONG_PASSWORD).andReturn().getResponse().getStatus();
+      }));
+    }
+    start.countDown();
+
+    int passwordChecks = 0;
+    int locked = 0;
+    for (Future<Integer> status : statuses) {
+      int code = status.get(1, TimeUnit.MINUTES);
+      if (code == 422) {
+        passwordChecks++;
+      } else if (code == 423) {
+        locked++;
+      }
+    }
+    pool.shutdown();
+
+    // A burst must not get more guesses than sequential requests would.
+    assertEquals(MAX_FAILED_ATTEMPTS, passwordChecks, "Password checks in a parallel burst");
+    assertEquals(requests - MAX_FAILED_ATTEMPTS, locked, "Requests rejected as locked");
+    signin(username, LOCKOUT_PASSWORD).andExpect(status().isLocked());
   }
 }
