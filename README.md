@@ -386,11 +386,11 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
 ### Configuration
 
-For **production**, set the JWT secret via environment variables. The default `secret-key` in `application.yml` is for local development only and must not be used in production.
+For **production**, set the JWT secret via environment variables. The `secret-key` fallback exists only in `application-dev.yml`; under any other profile the application refuses to start unless `JWT_SECRET` is set.
 
 | Variable | Description | Default |
 |----------|--------------|---------|
-| `JWT_SECRET` | Secret key used to sign JWT tokens. Use a long, random value (e.g. 256+ bits). | `secret-key` (dev only) |
+| `JWT_SECRET` | Secret key used to sign JWT tokens. Use a long, random value (e.g. 256+ bits). | `secret-key` in the `dev` profile; none (required) otherwise |
 | `JWT_EXPIRE_MS` | Access token validity in milliseconds. Keep it short — an access token cannot be revoked before it expires. | `300000` (5 minutes) |
 | `JWT_REFRESH_EXPIRE_MS` | Refresh token validity in milliseconds. Determines how long a client can stay signed in without re-entering credentials. | `604800000` (7 days) |
 
