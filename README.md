@@ -6,8 +6,8 @@ A JWT authentication service built with Spring Boot and Spring Security, using s
 
 ## Stack
 
-![](https://img.shields.io/badge/java_17-✓-blue.svg)
-![](https://img.shields.io/badge/spring_boot_3.5-✓-blue.svg)
+![](https://img.shields.io/badge/java_21-✓-blue.svg)
+![](https://img.shields.io/badge/spring_boot_4.1-✓-blue.svg)
 ![](https://img.shields.io/badge/mysql-✓-blue.svg)
 ![](https://img.shields.io/badge/jwt-✓-blue.svg)
 ![](https://img.shields.io/badge/refresh_tokens-✓-blue.svg)
@@ -406,7 +406,7 @@ Example: `export JWT_SECRET=your-secure-random-secret` before running the applic
 
 ### Setup
 
-1. Install **JDK 17 or newer** (LTS recommended, e.g. Temurin 17 or 21) and [Maven](https://maven.apache.org) 3.6.3+, or use the included **`./mvnw`** wrapper
+1. Install **JDK 21 or newer** (LTS recommended, e.g. Temurin 21 or 25) and [Maven](https://maven.apache.org) 3.6.3+, or use the included **`./mvnw`** wrapper
 
 2. Fork this repository and clone it
   
@@ -515,7 +515,7 @@ Integration-style tests use `@SpringBootTest` + `MockMvc`. For environments wher
 
 ## Version notes
 
-This project targets **Spring Boot 3.5.x** (LTS line; see `spring-boot-starter-parent` version in `pom.xml`), **Java 17+**, **Spring Security 6** (`SecurityFilterChain`, `authorizeHttpRequests`), **Jakarta EE** namespaces (`jakarta.*`), **JJWT 0.12.x**, and **SpringDoc OpenAPI** (replacing Springfox). Authentication uses short-lived JWT access tokens paired with rotating, revocable refresh tokens.
+This project targets **Spring Boot 4.1.x** (see `spring-boot-starter-parent` version in `pom.xml`), **Java 21+**, **Spring Security 7** (`SecurityFilterChain`, `authorizeHttpRequests`), **Jackson 3**, **Jakarta EE** namespaces (`jakarta.*`), **JJWT 0.13.x**, and **SpringDoc OpenAPI 3.x** (replacing Springfox). Authentication uses short-lived JWT access tokens paired with rotating, revocable refresh tokens.
 
 ## Breaking changes
 
